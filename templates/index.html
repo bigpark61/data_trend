@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Trend Analysis Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #dfe7f3;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 24px auto;
+      padding: 24px;
+    }
+
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .chart-header {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 500px;
+    }
+
+    .chart-wrap canvas {
+      max-height: 100%;
+    }
+
+    .table-section {
+      margin-top: 18px;
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    .data-table th {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 14px; }
+      .chart-wrap { height: 360px; }
+      .tabs { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AI Trend Analysis Dashboard</h1>
+      <p class="subtitle">Interactive analysis of AI hiring demand, technology adoption, and labor market signals</p>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="panel">
+      <div id="chartTitle" class="chart-header">Chart</div>
+      <div class="chart-wrap">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+      <div class="table-section">
+        <table class="data-table" id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let chartConfig = null;
+    let activeChartId = 'indeed-trend';
+    let chartInstance = null;
+
+    function createButtons(chartList) {
+      const tabs = document.getElementById('tabs');
+      tabs.innerHTML = '';
+
+      chartList.forEach((chart) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tab-btn';
+        button.dataset.tab = chart.id;
+        button.textContent = chart.tabLabel;
+        button.addEventListener('click', () => renderChart(chart.id));
+        tabs.appendChild(button);
+      });
+    }
+
+    function renderTable(chart) {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (!chart.table || !chart.table.headers || !chart.table.rows) {
+        return;
+      }
+
+      const headerRow = document.createElement('tr');
+      chart.table.headers.forEach((header) => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+
+      chart.table.rows.forEach((row) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell) => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderChart(chartId) {
+      const chart = chartConfig.find(item => item.id === chartId);
+      if (!chart) return;
+
+      activeChartId = chartId;
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.tab === chartId);
+      });
+
+      document.getElementById('chartTitle').textContent = chart.title;
+      renderTable(chart);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(document.getElementById('chartCanvas'), {
+        type: chart.type,
+        data: {
+          labels: chart.labels,
+          datasets: chart.datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          },
+          scales: chart.type === 'bar'
+            ? {
+                y: {
+                  beginAtZero: false,
+                  title: { display: true, text: chart.yAxisLabel || '' }
+                },
+                x: {
+                  title: { display: true, text: chart.xAxisLabel || '' }
+                }
+              }
+            : {
+                y: {
+                  beginAtZero: false,
+                  title: { display: true, text: chart.yAxisLabel || '' }
+                },
+                x: {
+                  title: { display: true, text: chart.xAxisLabel || '' }
+                }
+              }
+        }
+      });
+    }
+
+    async function loadData() {
+      const response = await fetch('/api/data');
+      const data = await response.json();
+      chartConfig = data.charts;
+      createButtons(chartConfig);
+      renderChart(activeChartId);
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
